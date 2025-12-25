@@ -263,44 +263,7 @@
 
     <details class="ascii-table" open>
         <summary>常用 ASCII 對照表 (▼ 展開/收合)</summary>
-        <div class="ascii-grid">
-            <div class="ascii-item"><span class="ascii-val">0</span><span class="ascii-char">NULL (空)</span></div>
-            <div class="ascii-item"><span class="ascii-val">10</span><span class="ascii-char">\n (換行)</span></div>
-            <div class="ascii-item"><span class="ascii-val">32</span><span class="ascii-char">Space (空白)</span></div>
-            <div class="ascii-item"><span class="ascii-val">48-57</span><span class="ascii-char">0 - 9</span></div>
-            <div class="ascii-item"><span class="ascii-val">65</span><span class="ascii-char">A</span></div>
-            <div class="ascii-item"><span class="ascii-val">66</span><span class="ascii-char">B</span></div>
-            <div class="ascii-item"><span class="ascii-val">67</span><span class="ascii-char">C</span></div>
-            <div class="ascii-item"><span class="ascii-val">68</span><span class="ascii-char">D</span></div>
-            <div class="ascii-item"><span class="ascii-val">69</span><span class="ascii-char">E</span></div>
-            <div class="ascii-item"><span class="ascii-val">70</span><span class="ascii-char">F</span></div>
-            <div class="ascii-item"><span class="ascii-val">71</span><span class="ascii-char">G</span></div>
-            <div class="ascii-item"><span class="ascii-val">72</span><span class="ascii-char">H</span></div>
-            <div class="ascii-item"><span class="ascii-val">73</span><span class="ascii-char">I</span></div>
-            <div class="ascii-item"><span class="ascii-val">74</span><span class="ascii-char">J</span></div>
-            <div class="ascii-item"><span class="ascii-val">75</span><span class="ascii-char">K</span></div>
-            <div class="ascii-item"><span class="ascii-val">76</span><span class="ascii-char">L</span></div>
-            <div class="ascii-item"><span class="ascii-val">77</span><span class="ascii-char">M</span></div>
-            <div class="ascii-item"><span class="ascii-val">78</span><span class="ascii-char">N</span></div>
-            <div class="ascii-item"><span class="ascii-val">79</span><span class="ascii-char">O</span></div>
-            <div class="ascii-item"><span class="ascii-val">80</span><span class="ascii-char">P</span></div>
-            <div class="ascii-item"><span class="ascii-val">81</span><span class="ascii-char">Q</span></div>
-            <div class="ascii-item"><span class="ascii-val">82</span><span class="ascii-char">R</span></div>
-            <div class="ascii-item"><span class="ascii-val">83</span><span class="ascii-char">S</span></div>
-            <div class="ascii-item"><span class="ascii-val">84</span><span class="ascii-char">T</span></div>
-            <div class="ascii-item"><span class="ascii-val">85</span><span class="ascii-char">U</span></div>
-            <div class="ascii-item"><span class="ascii-val">86</span><span class="ascii-char">V</span></div>
-            <div class="ascii-item"><span class="ascii-val">87</span><span class="ascii-char">W</span></div>
-            <div class="ascii-item"><span class="ascii-val">88</span><span class="ascii-char">X</span></div>
-            <div class="ascii-item"><span class="ascii-val">89</span><span class="ascii-char">Y</span></div>
-            <div class="ascii-item"><span class="ascii-val">90</span><span class="ascii-char">Z</span></div>
-            <div class="ascii-item"><span class="ascii-val">97-122</span><span class="ascii-char">a - z</span></div>
-            <div class="ascii-item"><span class="ascii-val">33</span><span class="ascii-char">!</span></div>
-            <div class="ascii-item"><span class="ascii-val">44</span><span class="ascii-char">,</span></div>
-            <div class="ascii-item"><span class="ascii-val">46</span><span class="ascii-char">.</span></div>
-            <div class="ascii-item"><span class="ascii-val">58</span><span class="ascii-char">:</span></div>
-            <div class="ascii-item"><span class="ascii-val">63</span><span class="ascii-char">?</span></div>
-        </div>
+        <img src="image.png" alt="ASCII 對照表" style="max-width: 100%; margin-top: 10px; border-radius: 4px;">
     </details>
 
     <div class="container">
@@ -362,7 +325,26 @@
         document.addEventListener('DOMContentLoaded', () => {
             createTape();
             updateGridLayout();
+            loadFromStorage(); // 載入上次保存的代碼和輸入
         });
+
+        // 從 localStorage 載入
+        function loadFromStorage() {
+            const savedCode = localStorage.getItem('bf_code');
+            const savedInput = localStorage.getItem('bf_input');
+            if (savedCode) {
+                document.getElementById('code').value = savedCode;
+            }
+            if (savedInput) {
+                document.getElementById('input').value = savedInput;
+            }
+        }
+
+        // 保存到 localStorage
+        function saveToStorage() {
+            localStorage.setItem('bf_code', document.getElementById('code').value);
+            localStorage.setItem('bf_input', document.getElementById('input').value);
+        }
 
         function createTape() {
             const tapeDiv = document.getElementById('tape');
@@ -492,6 +474,7 @@
             if (pc === 0 && !code) {
                 code = document.getElementById('code').value;
                 inputBuffer = document.getElementById('input').value;
+                saveToStorage(); // 保存到 localStorage
                 loopStack = parseLoops(code);
                 if (!loopStack && code.includes('[')) return;
             }
