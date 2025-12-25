@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brainfuck Visualizer</title>
+    <style>
+        :root {
+            --bg-color: #1e1e1e;
+            --text-color: #d4d4d4;
+            --accent-color: #007acc;
+            --cell-bg: #2d2d2d;
+            --cell-border: #3e3e3e;
+            --pointer-color: #f44336;
+            --success-color: #4ec9b0;
+        }
+
+        body {
+            font-family: 'Consolas', 'Monaco', monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+
+        a {
+            color: var(--success-color);
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        /* ASCII 表格樣式 */
+        details.ascii-table {
+            background: #252526;
+            border: 1px solid #3e3e3e;
+            border-radius: 6px;
+            padding: 5px 10px;
+            font-size: 0.9rem;
+        }
+
+        summary {
+            cursor: pointer;
+            font-weight: bold;
+            color: #9cdcfe;
+            margin-bottom: 5px;
+        }
+
+        .ascii-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            gap: 8px;
+            margin-top: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .ascii-item {
+            display: flex;
+            justify-content: space-between;
+            background: #333;
+            padding: 4px 8px;
+            border-radius: 3px;
+            border-left: 3px solid var(--accent-color);
+        }
+
+        .ascii-val {
+            color: #b5cea8;
+        }
+
+        .ascii-char {
+            color: #ce9178;
+            font-weight: bold;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            flex: 1;
+            min-height: 0;
+            /* 防止 flex item 溢出 */
+        }
+
+        /* 控制區 */
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+            background: #252526;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #3e3e3e;
+        }
+
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-family: inherit;
+            font-weight: bold;
+            transition: all 0.1s;
+        }
+
+        button:hover {
+            filter: brightness(1.1);
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        button:disabled {
+            background-color: #444;
+            cursor: not-allowed;
+            transform: none;
+            color: #888;
+        }
+
+        button.reset {
+            background-color: #555;
+        }
+
+        label {
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        input[type="number"],
+        input[type="text"] {
+            background: #3c3c3c;
+            border: 1px solid #555;
+            color: white;
+            padding: 5px;
+            border-radius: 3px;
+            font-family: inherit;
+        }
+
+        input[type="range"] {
+            cursor: pointer;
+        }
+
+        /* 編輯器與輸出 */
+        .io-area {
+            display: flex;
+            gap: 20px;
+            height: 220px;
+            flex-shrink: 0;
+        }
+
+        .box {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        textarea {
+            flex: 1;
+            background-color: #252526;
+            color: #9cdcfe;
+            border: 1px solid #3e3e3e;
+            padding: 10px;
+            font-family: inherit;
+            font-size: 1rem;
+            resize: none;
+            border-radius: 4px;
+        }
+
+        textarea:focus {
+            outline: 1px solid var(--accent-color);
+        }
+
+        /* 記憶體格子區域 */
+        #tape-container {
+            border: 1px solid #3e3e3e;
+            padding: 10px;
+            background: #252526;
+            border-radius: 4px;
+            position: relative;
+        }
+
+        .grid-layout {
+            display: grid;
+            gap: 6px;
+            /* grid-template-columns 由 JS 動態控制 */
+        }
+
+        .cell {
+            background-color: var(--cell-bg);
+            border: 1px solid var(--cell-border);
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            position: relative;
+            border-radius: 4px;
+            transition: background-color 0.1s;
+        }
+
+        .cell .index {
+            font-size: 0.6rem;
+            color: #666;
+            position: absolute;
+            top: 2px;
+            left: 4px;
+        }
+
+        .cell .value {
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: #dcdcaa;
+        }
+
+        .cell .char {
+            font-size: 0.8rem;
+            color: #ce9178;
+            height: 1.2em;
+        }
+
+        /* 指針樣式 */
+        .cell.active {
+            border: 2px solid var(--pointer-color);
+            background-color: #4a3c3c;
+            z-index: 10;
+            box-shadow: 0 0 12px rgba(244, 67, 54, 0.4);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1>Brainfuck Visualizer</h1>
+        <div style="font-size: 0.9rem;">
+            <a onclick="loadExample('hello')">Hello World</a> |
+            <a onclick="loadExample('add')">加法器 (Input)</a> |
+            <a onclick="loadExample('loop')">A-Z 迴圈</a>
+        </div>
+    </div>
+
+    <details class="ascii-table" open>
+        <summary>常用 ASCII 對照表 (▼ 展開/收合)</summary>
+        <div class="ascii-grid">
+            <div class="ascii-item"><span class="ascii-val">0</span><span class="ascii-char">NULL (空)</span></div>
+            <div class="ascii-item"><span class="ascii-val">10</span><span class="ascii-char">\n (換行)</span></div>
+            <div class="ascii-item"><span class="ascii-val">32</span><span class="ascii-char">Space (空白)</span></div>
+            <div class="ascii-item"><span class="ascii-val">48-57</span><span class="ascii-char">0 - 9</span></div>
+            <div class="ascii-item"><span class="ascii-val">65</span><span class="ascii-char">A</span></div>
+            <div class="ascii-item"><span class="ascii-val">66</span><span class="ascii-char">B</span></div>
+            <div class="ascii-item"><span class="ascii-val">67</span><span class="ascii-char">C</span></div>
+            <div class="ascii-item"><span class="ascii-val">68</span><span class="ascii-char">D</span></div>
+            <div class="ascii-item"><span class="ascii-val">69</span><span class="ascii-char">E</span></div>
+            <div class="ascii-item"><span class="ascii-val">70</span><span class="ascii-char">F</span></div>
+            <div class="ascii-item"><span class="ascii-val">71</span><span class="ascii-char">G</span></div>
+            <div class="ascii-item"><span class="ascii-val">72</span><span class="ascii-char">H</span></div>
+            <div class="ascii-item"><span class="ascii-val">73</span><span class="ascii-char">I</span></div>
+            <div class="ascii-item"><span class="ascii-val">74</span><span class="ascii-char">J</span></div>
+            <div class="ascii-item"><span class="ascii-val">75</span><span class="ascii-char">K</span></div>
+            <div class="ascii-item"><span class="ascii-val">76</span><span class="ascii-char">L</span></div>
+            <div class="ascii-item"><span class="ascii-val">77</span><span class="ascii-char">M</span></div>
+            <div class="ascii-item"><span class="ascii-val">78</span><span class="ascii-char">N</span></div>
+            <div class="ascii-item"><span class="ascii-val">79</span><span class="ascii-char">O</span></div>
+            <div class="ascii-item"><span class="ascii-val">80</span><span class="ascii-char">P</span></div>
+            <div class="ascii-item"><span class="ascii-val">81</span><span class="ascii-char">Q</span></div>
+            <div class="ascii-item"><span class="ascii-val">82</span><span class="ascii-char">R</span></div>
+            <div class="ascii-item"><span class="ascii-val">83</span><span class="ascii-char">S</span></div>
+            <div class="ascii-item"><span class="ascii-val">84</span><span class="ascii-char">T</span></div>
+            <div class="ascii-item"><span class="ascii-val">85</span><span class="ascii-char">U</span></div>
+            <div class="ascii-item"><span class="ascii-val">86</span><span class="ascii-char">V</span></div>
+            <div class="ascii-item"><span class="ascii-val">87</span><span class="ascii-char">W</span></div>
+            <div class="ascii-item"><span class="ascii-val">88</span><span class="ascii-char">X</span></div>
+            <div class="ascii-item"><span class="ascii-val">89</span><span class="ascii-char">Y</span></div>
+            <div class="ascii-item"><span class="ascii-val">90</span><span class="ascii-char">Z</span></div>
+            <div class="ascii-item"><span class="ascii-val">97-122</span><span class="ascii-char">a - z</span></div>
+            <div class="ascii-item"><span class="ascii-val">33</span><span class="ascii-char">!</span></div>
+            <div class="ascii-item"><span class="ascii-val">44</span><span class="ascii-char">,</span></div>
+            <div class="ascii-item"><span class="ascii-val">46</span><span class="ascii-char">.</span></div>
+            <div class="ascii-item"><span class="ascii-val">58</span><span class="ascii-char">:</span></div>
+            <div class="ascii-item"><span class="ascii-val">63</span><span class="ascii-char">?</span></div>
+        </div>
+    </details>
+
+    <div class="container">
+        <div class="controls">
+            <button onclick="runToggle()" id="btn-run">▶ 執行 (Run)</button>
+            <button onclick="step()" id="btn-step">➝ 單步 (Step)</button>
+            <button onclick="reset()" class="reset">↺ 重置 (Reset)</button>
+
+            <div style="width: 1px; height: 20px; background: #555; margin: 0 10px;"></div>
+
+            <label>速度: <input type="range" id="speed" min="1" max="100" value="95"></label>
+
+            <div style="width: 1px; height: 20px; background: #555; margin: 0 10px;"></div>
+
+            <label>每排格子數:
+                <input type="number" id="grid-cols" value="16" min="1" max="64" style="width: 50px;"
+                    onchange="updateGridLayout()">
+            </label>
+        </div>
+
+        <div class="io-area">
+            <div class="box">
+                <label>Code:</label>
+                <textarea id="code" spellcheck="false"
+                    placeholder="在此輸入 Brainfuck 代碼...">++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.</textarea>
+            </div>
+            <div class="box">
+                <label>Input Buffer (供 , 指令讀取):</label>
+                <textarea id="input" placeholder="程式需要的輸入值..." style="height: 50px; margin-bottom: 10px;"></textarea>
+                <label>Output:</label>
+                <textarea id="output" readonly style="color: #ce9178; font-weight: bold;"></textarea>
+            </div>
+        </div>
+
+        <label>Memory Tape (顯示前 256 格):</label>
+        <div id="tape-container">
+            <div id="tape" class="grid-layout">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 配置
+        const MEMORY_SIZE = 30000;
+        const DISPLAY_SIZE = 256;
+
+        // 狀態變數
+        let memory = new Uint8Array(MEMORY_SIZE);
+        let ptr = 0; // 指針位置
+        let pc = 0;  // 程式計數器
+        let loopStack = {};
+        let code = "";
+        let isRunning = false;
+        let timer = null;
+        let inputBuffer = "";
+        let isFinished = false; // 標記程式是否已執行完畢
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            createTape();
+            updateGridLayout();
+        });
+
+        function createTape() {
+            const tapeDiv = document.getElementById('tape');
+            tapeDiv.innerHTML = '';
+            for (let i = 0; i < DISPLAY_SIZE; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.id = `cell-${i}`;
+                cell.innerHTML = `
+                <span class="index">${i}</span>
+                <span class="value">0</span>
+                <span class="char"></span>
+            `;
+                tapeDiv.appendChild(cell);
+            }
+            highlightCell(0);
+        }
+
+        function updateGridLayout() {
+            const cols = document.getElementById('grid-cols').value;
+            document.getElementById('tape').style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+        }
+
+        function highlightCell(index) {
+            const active = document.querySelector('.cell.active');
+            if (active) active.classList.remove('active');
+
+            if (index < DISPLAY_SIZE) {
+                const cell = document.getElementById(`cell-${index}`);
+                if (cell) {
+                    cell.classList.add('active');
+                    // 確保視野跟隨指針
+                    const container = document.getElementById('tape-container');
+                    const cellTop = cell.offsetTop;
+                    const cellBottom = cellTop + cell.offsetHeight;
+                    const containerTop = container.scrollTop;
+                    const containerBottom = containerTop + container.offsetHeight;
+
+                    if (cellTop < containerTop || cellBottom > containerBottom) {
+                        cell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                }
+            }
+        }
+
+        function updateCellDisplay(index, val) {
+            if (index >= DISPLAY_SIZE) return;
+            const cell = document.getElementById(`cell-${index}`);
+            // 顯示可見 ASCII 字元
+            const char = (val >= 32 && val <= 126) ? String.fromCharCode(val) : (val === 10 ? '\\n' : '');
+            cell.querySelector('.value').innerText = val;
+            cell.querySelector('.char').innerText = char;
+        }
+
+        function parseLoops(source) {
+            const stack = [];
+            const map = {};
+            for (let i = 0; i < source.length; i++) {
+                if (source[i] === '[') {
+                    stack.push(i);
+                } else if (source[i] === ']') {
+                    if (stack.length === 0) {
+                        alert("語法錯誤：多餘的 ']'");
+                        return null;
+                    }
+                    const start = stack.pop();
+                    map[start] = i;
+                    map[i] = start;
+                }
+            }
+            if (stack.length > 0) {
+                alert("語法錯誤：缺少 ']'");
+                return null;
+            }
+            return map;
+        }
+
+        function reset() {
+            stop();
+            memory = new Uint8Array(MEMORY_SIZE);
+            ptr = 0;
+            pc = 0;
+            isFinished = false;
+            code = ""; // 清空緩存代碼
+
+            document.getElementById('output').value = "";
+            document.getElementById('input').value = ""; // 重置時是否清空輸入視需求而定，這裡選擇清空
+
+            // UI 更新
+            for (let i = 0; i < DISPLAY_SIZE; i++) updateCellDisplay(i, 0);
+            highlightCell(0);
+            document.getElementById('btn-run').innerText = "▶ 執行 (Run)";
+        }
+
+        function stop() {
+            isRunning = false;
+            clearInterval(timer);
+            document.getElementById('btn-run').innerText = isFinished ? "↻ 重新執行 (Rerun)" : "▶ 繼續 (Resume)";
+            if (isFinished) document.getElementById('btn-run').innerText = "↻ 重新執行 (Rerun)";
+            else if (pc === 0) document.getElementById('btn-run').innerText = "▶ 執行 (Run)";
+
+            document.getElementById('btn-step').disabled = false;
+        }
+
+        function runToggle() {
+            if (isRunning) {
+                stop();
+            } else {
+                // 自動重置邏輯：如果已經跑完了，再次點擊執行時，先重置狀態
+                if (isFinished) {
+                    // 保存原本的代碼和輸入，因為 reset() 會清空 UI 顯示以外的內部變數
+                    const currentCode = document.getElementById('code').value;
+                    const currentInput = document.getElementById('input').value;
+
+                    reset();
+
+                    // 恢復並準備執行
+                    document.getElementById('code').value = currentCode;
+                    document.getElementById('input').value = currentInput;
+                }
+                startRun();
+            }
+        }
+
+        function startRun() {
+            // 初始化代碼解析 (如果是從頭開始)
+            if (pc === 0 && !code) {
+                code = document.getElementById('code').value;
+                inputBuffer = document.getElementById('input').value;
+                loopStack = parseLoops(code);
+                if (!loopStack && code.includes('[')) return;
+            }
+
+            isRunning = true;
+            isFinished = false;
+            document.getElementById('btn-run').innerText = "❚❚ 暫停 (Pause)";
+            document.getElementById('btn-step').disabled = true;
+
+            const speedInput = document.getElementById('speed');
+
+            const executeLoop = () => {
+                if (!isRunning) return;
+
+                // 速度控制邏輯
+                let stepsPerFrame = 1;
+                let delay = 100 - speedInput.value;
+
+                if (speedInput.value > 90) {
+                    delay = 0;
+                    stepsPerFrame = (speedInput.value - 90) * 15; // 極速模式
+                } else {
+                    delay = delay * 5;
+                }
+
+                for (let i = 0; i < stepsPerFrame; i++) {
+                    if (pc >= code.length) {
+                        finishExecution();
+                        return;
+                    }
+                    stepLogic();
+                }
+
+                if (isRunning) {
+                    timer = setTimeout(executeLoop, delay);
+                }
+            };
+
+            executeLoop();
+        }
+
+        function finishExecution() {
+            isRunning = false;
+            isFinished = true;
+            clearInterval(timer);
+            document.getElementById('btn-run').innerText = "↻ 重新執行 (Rerun)";
+            document.getElementById('btn-step').disabled = false;
+        }
+
+        function step() {
+            // 如果已結束，點單步也視為重置
+            if (isFinished) {
+                const currentCode = document.getElementById('code').value;
+                const currentInput = document.getElementById('input').value;
+                reset();
+                document.getElementById('code').value = currentCode;
+                document.getElementById('input').value = currentInput;
+            }
+
+            if (pc === 0 && !code) {
+                code = document.getElementById('code').value;
+                inputBuffer = document.getElementById('input').value;
+                loopStack = parseLoops(code);
+                if (!loopStack && code.includes('[')) return;
+            }
+
+            if (pc < code.length) {
+                stepLogic();
+            } else {
+                finishExecution();
+            }
+        }
+
+        function stepLogic() {
+            const char = code[pc];
+
+            switch (char) {
+                case '>':
+                    ptr++;
+                    if (ptr >= MEMORY_SIZE) ptr = 0;
+                    highlightCell(ptr);
+                    break;
+                case '<':
+                    ptr--;
+                    if (ptr < 0) ptr = MEMORY_SIZE - 1;
+                    highlightCell(ptr);
+                    break;
+                case '+':
+                    memory[ptr]++;
+                    updateCellDisplay(ptr, memory[ptr]);
+                    break;
+                case '-':
+                    memory[ptr]--;
+                    updateCellDisplay(ptr, memory[ptr]);
+                    break;
+                case '.':
+                    const outChar = String.fromCharCode(memory[ptr]);
+                    const outBox = document.getElementById('output');
+                    outBox.value += outChar;
+                    outBox.scrollTop = outBox.scrollHeight;
+                    break;
+                case ',':
+                    if (inputBuffer.length > 0) {
+                        memory[ptr] = inputBuffer.charCodeAt(0);
+                        inputBuffer = inputBuffer.slice(1);
+                        // 同步更新 Input 顯示框，讓使用者看到輸入被吃掉了
+                        document.getElementById('input').value = inputBuffer;
+                    } else {
+                        memory[ptr] = 0; // EOF = 0
+                    }
+                    updateCellDisplay(ptr, memory[ptr]);
+                    break;
+                case '[':
+                    if (memory[ptr] === 0) {
+                        pc = loopStack[pc];
+                    }
+                    break;
+                case ']':
+                    if (memory[ptr] !== 0) {
+                        pc = loopStack[pc];
+                    }
+                    break;
+            }
+            pc++;
+        }
+
+        function loadExample(type) {
+            reset();
+            if (type === 'hello') {
+                document.getElementById('code').value = "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++.";
+            } else if (type === 'add') {
+                document.getElementById('code').value = ",>,[<+>-]<------------------------------------------------.";
+                document.getElementById('input').value = "12";
+                alert("請在 Input 緩衝區輸入兩個數字（如 12），程式會相加並輸出結果。");
+            } else if (type === 'loop') {
+                document.getElementById('code').value = "+++++[>+++++<-]>[<+>+>-]<+++++++++++++++++++++++++++++++++.[-]++++++++++.";
+                alert("這個範例會計算 5x5=25，然後加上 65 (A) 並輸出，接著換行。");
+            }
+        }
+    </script>
+
+</body>
+
+</html>
